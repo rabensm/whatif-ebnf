@@ -1,0 +1,93 @@
+node init 
+meta {
+	n.next_list = toy_store
+}
+{
+	p.toys = hula_hoop: <"hula hoop">, rc_car: <"remote-controlled car">, toy_gun: <"toy gun">, paddle_ball: <"paddle ball">
+	p.calvin.real_name = <'Snidely Whiplash'>
+	p.hairstyles = mullet: <"a bitchin' mullet">, combover: <"a midlife-crisis combover">, man_bun: <"a stately man bun">,
+		ponytail, pigtails, mohawk, dreadlocks: <"culturally questionable dreadlocks">
+	p.something = really_something
+	p.somethingelse = really_something
+
+	p.calvin.hair = get pigtails from p.hairstyles
+	p.calvin.fav_toy = get rc_car from p.toys
+	
+	<"Once upon a time, blah, blah, etc...">
+
+	n.next = toy_store
+}
+
+node toy_store: <"Toy Store">
+meta {
+	n.next_list = alley
+}
+{
+	p.calvin.has_flashlight = false
+
+	p.georgia.sons_bully_hair = get mullet from p.hairstyles
+	p.georgia.sons_fav_toy = get paddle_ball from p.toys
+
+	<'Calvin pushed open the door and strode in, his sandy hair sporting {choose p.calvin.hair from p.hairstyles}. He spotted his favorite toy, a {choose p.calvin.fav_toy from p.toys}. He ran to the {p.calvin.fav_toy} and stood over it. '>
+
+	if p.calvin.fav_toy is hula_hoop
+		<'"Hula, baby!", Calvin screamed. '>
+
+	if p.calvin.hair is p.georgia.sons_bully_hair
+	{
+		// she hates his hair
+		<'
+
+		Georgia glanced at Calvin, then stared, disgusted by his hair. She turned abruptly and left through the door.
+		'>
+	}
+	else
+	{
+		if p.georgia.sons_fav_toy is not p.calvin.fav_toy
+		{
+			// she's polite, but indifferent
+			<'
+			
+			Georgia looked over at Calvin with the {p.calvin.fav_toy}, smiled politely with a quick nod, then turned back to the cashier. Collecting her items and receipt, she turned and left through the door.
+			'>
+		}
+		else
+		{
+			// she feels affection for him, and gives him flashlight
+			<'
+			
+			Georgia looked over at Calvin with the {p.calvin.fav_toy}, first amused, then pensive. Suddenly, as if struck by inspiration, she opened her purse, rummaged through it, and her hand emerged with the flashlight. Smiling, she held it out to Calvin. At first, Calvin looked slightly bewildered, but then snatched the flashlight from her hand and grinned back at her.
+			'>
+
+			p.calvin.has_flashlight = true
+		}
+	}
+
+	<'
+	Calvin wandered out the back door of the toy store, into the alley{if p.calvin.has_flashlight is true <', flashlight in hand'>}.
+	'>
+
+	p.calvin.nickname = <"Li'l {p.calvin.real_name}">
+	<"
+	Calvin got a nickname! It's {p.calvin.nickname}.
+
+	">
+
+	n.next = alley
+
+}
+
+node alley: <"Alley">
+meta {
+	n.next_list = null
+}
+{
+	if p.calvin.has_flashlight
+		<'It's still pretty dark.
+		'>
+	else
+		<'It's dark here, Calvin. REAL dark. I don't think you're going any further than this.
+		'>
+	
+	n.next = null
+}

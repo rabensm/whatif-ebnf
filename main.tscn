@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ck55hovsd0xvc"]
+
+[ext_resource type="Script" path="res://God.cs" id="1_tw6f8"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_tw6f8")
