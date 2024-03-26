@@ -1,100 +1,287 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
-public partial class GrammarTree
+namespace Grammar
 {
-    public GrammarTree(string grammarFilePath)
+    public partial class GrammarTree
     {
-        FileInfo grammarFile = new(grammarFilePath);
-        string grammar = File.ReadAllText(grammarFile.FullName);
-        GrammarParser gp = new(grammar);
-        gp.Parse();
-    }
+        private readonly Dictionary<string, Node> NonTerminalsMap = [];
+        private readonly Node EXPRNode = new(NodeType.NonTerminal, "EXPR");
 
-    private partial class GrammarParser(string grammar)
-    {
-        private readonly string grammar = grammar;
-        private int index = 0;
-        [GeneratedRegex(@"[a-zA-Z][a-zA-Z0-9_]*")]
-        private static partial Regex NonTerminalRE();
-
-        public void Parse()
+        public GrammarTree(string grammarFilePath)
         {
-            SkipWhitespace();
-            while (index < grammar.Length)
+            EXPRNode.AddChild(new Node(NodeType.Alternate));
+            NonTerminalsMap["EXPR"] = EXPRNode;
+            FileInfo grammarFile = new(grammarFilePath);
+            string grammar = File.ReadAllText(grammarFile.FullName);
+            GrammarParser gp = new(grammar, this);
+            gp.Parse();
+        }
+
+        private Node GetNonTerminal(string name)
+        {
+            if (!NonTerminalsMap.TryGetValue(name, out Node? value))
             {
-                ParseRule();
+                value = new Node(NodeType.NonTerminal, name);
+                NonTerminalsMap[name] = value;
+            }
+            return value;
+        }
+
+        public enum NodeType
+        {
+            NonTerminal, Terminal, RegEx, Concatenate, Alternate, NoneOrOnce, NoneOrMore, Grouping
+        }
+
+        private struct BracketPair
+        {
+            public NodeType Type;
+            public string Open;
+            public string Close;
+        }
+
+        private static readonly BracketPair[] BracketPairs =
+        [
+            new BracketPair { Type = NodeType.Grouping, Open = "(", Close = ")" },
+            new BracketPair { Type = NodeType.NoneOrMore, Open = "{", Close = "}" },
+            new BracketPair { Type = NodeType.NoneOrOnce, Open = "[", Close = "]" }
+        ];
+
+        public class Node(NodeType type, string? value = null)
+        {
+            public NodeType Type = type;
+            public string? Value = value;
+            public List<Node> Children = [];
+            public void AddChild(Node child)
+            {
+                Children.Add(child);
             }
         }
 
-        private string Next()
+        private partial class GrammarParser(string grammar, GrammarTree tree)
         {
-            return grammar[index..];
-        }
+            private readonly string grammar = grammar;
+            private readonly GrammarTree tree = tree;
+            private int index = 0;
+            [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9_]*")]
+            private static partial Regex NonTerminalRE();
 
-        private char NextChar()
-        {
-            return grammar[index];
-        }
-
-        private void SkipWhitespace()
-        {
-            while (char.IsWhiteSpace(NextChar()))
+            public void Parse()
             {
-                index++;
+                SkipWhitespace();
+                while (index < grammar.Length)
+                    ParseRule();
             }
-        }
 
-        private void BumpIndex(int n)
-        {
-            index += n;
-            SkipWhitespace();
-        }
+            private string Next() { return grammar[index..]; }
 
-        private bool TryMatch(string s)
-        {
-            if (Next().StartsWith(s))
+            private char NextChar() { return grammar[index]; }
+
+            private void SkipWhitespace()
             {
-                BumpIndex(s.Length);
-                return true;
+                while (index < grammar.Length && char.IsWhiteSpace(NextChar()))
+                    index++;
             }
-            return false;
-        }
 
-        private void Match(string s)
-        {
-            if (!TryMatch(s))
+            private void BumpIndex(int n)
             {
-                throw new System.Exception($"Expected '{s}'");
+                index += n;
+                SkipWhitespace();
             }
-        }
 
-        private void ParseRule()
-        {
-            string RuleLHSName = ParseNonTerminal();
-            Match("::=");
-            while (index < grammar.Length)
+            private bool CanMatch(string s) { return Next().StartsWith(s); }
+
+            private bool TryMatch(string s)
             {
+                if (CanMatch(s))
+                {
+                    BumpIndex(s.Length);
+                    return true;
+                }
+                return false;
             }
-        }
 
-        private string? TryNonTerminal()
-        {
-            Match m = NonTerminalRE().Match(Next());
-            if (m.Success)
+            private void Match(string s)
             {
-                BumpIndex(m.Length);
-                return m.Value;
+                if (!TryMatch(s))
+                    throw new System.Exception($"Expected '{s}'");
             }
-            return null;
-        }
 
-        private string ParseNonTerminal()
-        {
-            string? nt = TryNonTerminal() ?? throw new System.Exception("Expected non-terminal");
-            return nt;
+            private void ParseRule()
+            {
+                Node ruleNode = tree.GetNonTerminal(ParseNonTerminal());
+                tree.EXPRNode.Children[0].AddChild(ruleNode);
+                Match("::=");
+                ParseIntoNode(ruleNode);
+            }
+
+            private void ParseIntoNode(Node node)
+            {
+                Node? nextNode;
+
+                while (true)
+                {
+                    nextNode = null;
+
+                    string? nt = TryNonTerminal();
+                    if (nt != null)
+                        nextNode = tree.GetNonTerminal(nt);
+
+                    if (nextNode == null)
+                    {
+                        string? term = TryTerminal();
+                        if (term != null)
+                            nextNode = new Node(NodeType.Terminal, term);
+                    }
+
+                    if (nextNode == null)
+                    {
+                        string? reg = TryRegEx();
+                        if (reg != null)
+                            nextNode = new Node(NodeType.RegEx, reg);
+                    }
+
+                    if (nextNode == null)
+                    {
+                        foreach (BracketPair bp in BracketPairs)
+                        {
+                            if (TryMatch(bp.Open))
+                            {
+                                Node groupNode = new(bp.Type);
+                                ParseIntoNode(groupNode);
+                                nextNode = groupNode;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (nextNode == null)
+                        throw new System.Exception("Expected non-terminal, terminal, regex, or grouping");
+
+                    if (node.Type != NodeType.Concatenate && TryMatch(","))
+                    {
+                        Node concatNode = new(NodeType.Concatenate);
+                        concatNode.AddChild(nextNode);
+                        ParseIntoNode(concatNode);
+                        nextNode = concatNode;
+                    }
+                    if (node.Type != NodeType.Alternate && TryMatch("|"))
+                    {
+                        Node altNode = new(NodeType.Alternate);
+                        altNode.AddChild(nextNode);
+                        ParseIntoNode(altNode);
+                        nextNode = altNode;
+                    }
+                    node.AddChild(nextNode);
+
+                    BracketPair? nodeBracket = null;
+                    BracketPair? closeBracket = null;
+                    foreach (BracketPair bp in BracketPairs)
+                    {
+                        if (bp.Type == node.Type)
+                            nodeBracket = bp;
+                        if (CanMatch(bp.Close))
+                            closeBracket = bp;
+                    }
+                    if (closeBracket != null)
+                    {
+                        if (nodeBracket != null)
+                        {
+                            if (nodeBracket.Value.Type == closeBracket.Value.Type)
+                                Match(closeBracket.Value.Close);
+                            else
+                                throw new System.Exception("Mismatched brackets");
+                        }
+                        return;
+                    }
+
+                    if (CanMatch(";"))
+                    {
+                        if (node.Type == NodeType.NonTerminal)
+                            Match(";");
+                        return;
+                    }
+
+                    if (node.Type == NodeType.Concatenate)
+                        Match(",");
+
+                    if (node.Type == NodeType.Alternate)
+                        Match("|");
+                }
+            }
+
+            private string? TryNonTerminal()
+            {
+                Match m = NonTerminalRE().Match(Next());
+                if (m.Success)
+                {
+                    BumpIndex(m.Length);
+                    return m.Value;
+                }
+                return null;
+            }
+
+            private string ParseNonTerminal()
+            {
+                string? nt = TryNonTerminal() ?? throw new System.Exception("Expected non-terminal");
+                return nt;
+            }
+
+            private string? TryTerminal()
+            {
+                if (NextChar() == '"' || NextChar() == '\'')
+                {
+                    char quote = NextChar();
+                    index++;
+                    string val = "";
+                    while (true)
+                    {
+                        if (Next() == "\\" + quote)
+                        {
+                            val += quote;
+                            index += 2;
+                            continue;
+                        }
+                        if (NextChar() == quote)
+                        {
+                            BumpIndex(1);
+                            return val;
+                        }
+                        val += NextChar();
+                        index++;
+                    }
+                }
+                return null;
+            }
+
+            private string? TryRegEx()
+            {
+                if (NextChar() == '/')
+                {
+                    index++;
+                    string val = "";
+                    while (true)
+                    {
+                        if (Next() == "\\/")
+                        {
+                            val += "\\/";
+                            index += 2;
+                            continue;
+                        }
+                        if (NextChar() == '/')
+                        {
+                            BumpIndex(1);
+                            return val;
+                        }
+                        val += NextChar();
+                        index++;
+                    }
+                }
+                return null;
+            }
         }
     }
 }

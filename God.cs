@@ -7,7 +7,7 @@ public partial class God : Node
 	public override void _Ready()
 	{
 		Debug.WriteLine("Ready method called.");
-		GrammarTree gt = new ("wif.ebnf");
+		Grammar.GrammarTree gt = new ("wif.ebnf");
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
