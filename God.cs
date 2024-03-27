@@ -1,13 +1,16 @@
 using Godot;
-using System.Diagnostics;
+using System.IO;
 
 public partial class God : Node
 {
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
-		Debug.WriteLine("Ready method called.");
-		Grammar.GrammarTree gt = new ("wif.ebnf");
+		Grammar.GrammarTree gt = new ();
+
+		FileInfo testWifFile = new("test.wif");
+		string testWif = File.ReadAllText(testWifFile.FullName);
+		gt.Parse(testWif);
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
