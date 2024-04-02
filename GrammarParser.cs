@@ -1,14 +1,14 @@
 #nullable enable
 
 using System.Text.RegularExpressions;
-using static Grammar.GrammarTree;
+using static Grammar.GrammarGraph;
 
 namespace Grammar
 {
-    public partial class GrammarParser(string grammar, GrammarTree tree)
+    public partial class GrammarParser(string grammar, GrammarGraph ggraph)
     {
         private readonly string grammar = grammar;
-        private readonly GrammarTree tree = tree;
+        private readonly GrammarGraph ggraph = ggraph;
         private int index = 0;
         [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9_]*")]
         private static partial Regex NonTerminalRE();
@@ -36,12 +36,12 @@ namespace Grammar
                 ParseRule();
         }
 
-        private GrammarTree.Node GetNonTerminal(string name)
+        private GrammarGraph.Node GetNonTerminal(string name)
         {
-            if (!tree.NonTerminalsMap.TryGetValue(name, out Node? value))
+            if (!ggraph.NonTerminalsMap.TryGetValue(name, out Node? value))
             {
                 value = new Node(NodeType.NonTerminal, name);
-                tree.NonTerminalsMap[name] = value;
+                ggraph.NonTerminalsMap[name] = value;
             }
             return value;
         }
@@ -82,8 +82,8 @@ namespace Grammar
 
         private void ParseRule()
         {
-            GrammarTree.Node ruleNode = GetNonTerminal(ParseNonTerminal());
-            tree.EXPRNode.Children[0].AddChild(ruleNode);
+            GrammarGraph.Node ruleNode = GetNonTerminal(ParseNonTerminal());
+            ggraph.EXPRNode.Children[0].AddChild(ruleNode);
             Match("::=");
             ParseIntoNode(ruleNode);
         }

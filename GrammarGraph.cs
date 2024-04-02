@@ -8,13 +8,13 @@ using System.Text.Json;
 
 namespace Grammar
 {
-    public class GrammarTree
+    public class GrammarGraph
     {
         public readonly Dictionary<string, Node> NonTerminalsMap = [];
         public readonly Node EXPRNode = new(NodeType.NonTerminal, "EXPR");
         private string Input = "";
 
-        public GrammarTree()
+        public GrammarGraph()
         {
             EXPRNode.AddChild(new Node(NodeType.Alternate));
             NonTerminalsMap["EXPR"] = EXPRNode;
@@ -24,7 +24,23 @@ namespace Grammar
             gp.Parse();
         }
 
-        private string VisualizeTree()
+        public enum NodeType
+        {
+            NonTerminal, Terminal, RegEx, Concatenate, Alternate, NoneOrOnce, NoneOrMore, Grouping
+        }
+
+        public class Node(NodeType type, string value = "")
+        {
+            public NodeType Type = type;
+            public string Value = value;
+            public List<Node> Children = [];
+            public void AddChild(Node child)
+            {
+                Children.Add(child);
+            }
+        }
+
+        private string VisualizeGraph()
         {
 
             var json = new
@@ -117,7 +133,11 @@ namespace Grammar
 
             if (matched)
             {
-                Debug.WriteLine($"Matched {node.Type} '{node.Value}' to {Input[indexIn..index]}");
+                Debug.WriteLine($"Matched {node.Type} '{node.Value}' to \"{Input[indexIn..index]}\"");
+            }
+            else
+            {
+                Debug.WriteLine($"Did not match {node.Type} '{node.Value}' to \"{Input[indexIn..(indexIn + 20)]}...\"");
             }
 
             return matched;
@@ -194,20 +214,5 @@ namespace Grammar
             return MatchNode(node.Children[0], ref index);
         }
 
-        public enum NodeType
-        {
-            NonTerminal, Terminal, RegEx, Concatenate, Alternate, NoneOrOnce, NoneOrMore, Grouping
-        }
-
-        public class Node(NodeType type, string value = "")
-        {
-            public NodeType Type = type;
-            public string Value = value;
-            public List<Node> Children = [];
-            public void AddChild(Node child)
-            {
-                Children.Add(child);
-            }
-        }
     }
 }
