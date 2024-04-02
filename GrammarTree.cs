@@ -65,7 +65,11 @@ namespace Grammar
                     ["items"] = new[]
                     {
                         new { text = node.Type.ToString(), emphasis = "style1"},
-                        new { text = " \"" + node.Value + "\"", emphasis = ""}
+                        node.Type == NodeType.NonTerminal ?
+                            new { text = node.Value, emphasis = "style2"} :
+                            node.Value == "" ?
+                                new { text = "", emphasis = ""} :
+                                new { text = " \"" + node.Value + "\"", emphasis = ""}
                     },
                     ["children"] = children
                 });
