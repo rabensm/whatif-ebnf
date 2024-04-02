@@ -1,7 +1,10 @@
-node ::= 'node', identifier, [ 'meta', block ], block ;
+node ::= 'node', state, [ 'meta', block ], block ;
 property ::= 'p.', identifier, { '.', identifier } ;
 node_property ::= 'n.', identifier, { '.', identifier } ;
 assignment ::= (property | node_property), '=', EXPR ;
 block ::= '{', { EXPR }, '}' ;
+get_from_list ::= 'get', state, 'from', EXPR ;
 state ::= identifier, [':', EXPR] ;
 identifier ::= /^[a-zA-Z_][a-zA-Z_\d]*/ ;
+string_literal ::= /<"[^"]*">/ | /<'[^']*'>/ ;
+expr_list ::= EXPR, { ',', EXPR } ;

@@ -1,0 +1,19 @@
+node init 
+meta {
+	n.next_list = toy_store
+}
+{
+	p.toys = hula_hoop: <"hula hoop">, rc_car: <"remote-controlled car">, toy_gun: <"toy gun">, paddle_ball: <"paddle ball">
+	p.calvin.real_name = <'Snidely Whiplash'>
+	p.hairstyles = mullet: <"a bitchin' mullet">, combover: <"a midlife-crisis combover">, man_bun: <"a stately man bun">,
+		ponytail, pigtails, mohawk, dreadlocks: <"culturally questionable dreadlocks">
+	p.something = really_something
+	p.somethingelse = really_something
+
+	p.calvin.hair = get pigtails from p.hairstyles
+	p.calvin.fav_toy = get rc_car from p.toys
+	
+	<"Once upon a time, blah, blah, etc...">
+
+	n.next = toy_store
+}

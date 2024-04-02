@@ -1,8 +1,10 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace Grammar
 {
@@ -21,6 +23,55 @@ namespace Grammar
             GrammarParser gp = new(grammar, this);
             gp.Parse();
         }
+
+        private string VisualizeTree()
+        {
+
+            var json = new
+            {
+                root = new Dictionary<string, object>
+                {
+                    ["items"] = new[]
+                    {
+                        new { text = "root" }
+                    },
+                    ["children"] = new List<object>()
+                },
+                kind = new { tree = true }
+            };
+
+            List<object> nodes = (List<object>)json.root["children"];
+
+            AddNode(EXPRNode, nodes, true);
+
+            return JsonSerializer.Serialize(json);
+
+            void AddNode(Node node, List<object> nodes, bool addNonTermChildren)
+            {
+                List<object> children = [];
+
+                if ((node.Type != NodeType.NonTerminal) || addNonTermChildren)
+                {
+                    if (node.Type == NodeType.NonTerminal && node != EXPRNode)
+                        addNonTermChildren = false;
+                    foreach (Node child in node.Children)
+                    {
+                        AddNode(child, children, addNonTermChildren);
+                    }
+                }
+
+                nodes.Add(new Dictionary<string, object>
+                {
+                    ["items"] = new[]
+                    {
+                        new { text = node.Type.ToString(), emphasis = "style1"},
+                        new { text = " \"" + node.Value + "\"", emphasis = ""}
+                    },
+                    ["children"] = children
+                });
+            }
+        }
+
 
         public void Parse(string input)
         {
@@ -44,27 +95,28 @@ namespace Grammar
 
         private bool MatchNode(Node node, ref int index)
         {
-            switch (node.Type)
+            int indexIn = index;
+            bool matched;
+
+            matched = node.Type switch
             {
-                case NodeType.NonTerminal:
-                    return MatchNonTerminal(node, ref index);
-                case NodeType.Terminal:
-                    return MatchTerminal(node, ref index);
-                case NodeType.RegEx:
-                    return MatchRegEx(node, ref index);
-                case NodeType.Concatenate:
-                    return MatchConcatenate(node, ref index);
-                case NodeType.Alternate:
-                    return MatchAlternate(node, ref index);
-                case NodeType.NoneOrOnce:
-                    return MatchNoneOrOnce(node, ref index);
-                case NodeType.NoneOrMore:
-                    return MatchNoneOrMore(node, ref index);
-                case NodeType.Grouping:
-                    return MatchGrouping(node, ref index);
-                default:
-                    return false;
+                NodeType.NonTerminal => MatchNonTerminal(node, ref index),
+                NodeType.Terminal => MatchTerminal(node, ref index),
+                NodeType.RegEx => MatchRegEx(node, ref index),
+                NodeType.Concatenate => MatchConcatenate(node, ref index),
+                NodeType.Alternate => MatchAlternate(node, ref index),
+                NodeType.NoneOrOnce => MatchNoneOrOnce(node, ref index),
+                NodeType.NoneOrMore => MatchNoneOrMore(node, ref index),
+                NodeType.Grouping => MatchGrouping(node, ref index),
+                _ => false,
+            };
+
+            if (matched)
+            {
+                Debug.WriteLine($"Matched {node.Type} '{node.Value}' to {Input[indexIn..index]}");
             }
+
+            return matched;
         }
 
         private bool MatchNonTerminal(Node node, ref int index)
@@ -129,7 +181,7 @@ namespace Grammar
 
         private bool MatchNoneOrMore(Node node, ref int index)
         {
-            while (MatchNode(node.Children[0], ref index));
+            while (MatchNode(node.Children[0], ref index)) ;
             return true;
         }
 

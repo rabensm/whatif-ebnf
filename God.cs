@@ -8,7 +8,7 @@ public partial class God : Node
 	{
 		Grammar.GrammarTree gt = new ();
 
-		FileInfo testWifFile = new("test.wif");
+		FileInfo testWifFile = new("itest.wif");
 		string testWif = File.ReadAllText(testWifFile.FullName);
 		gt.Parse(testWif);
 	}
