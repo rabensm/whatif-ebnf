@@ -92,7 +92,6 @@ namespace Grammar
             }
         }
 
-
         public void Parse(string input)
         {
             Input = input;
@@ -113,10 +112,15 @@ namespace Grammar
             SkipWhitespace(ref index);
         }
 
+        readonly List<string> nodeStack = [];
+
         private bool MatchNode(Node node, ref int index)
         {
             int indexIn = index;
             bool matched;
+
+            nodeStack.Add(node.Type.ToString()[..4] + ":" + node.Value);
+            Debug.WriteLine(">" + string.Join(" ", nodeStack));
 
             matched = node.Type switch
             {
@@ -139,6 +143,9 @@ namespace Grammar
             {
                 Debug.WriteLine($"Did not match {node.Type} '{node.Value}' to \"{Input[indexIn..(indexIn + 20)]}...\"");
             }
+
+            nodeStack.RemoveAt(nodeStack.Count - 1);
+            Debug.WriteLine("<" + string.Join(" ", nodeStack));
 
             return matched;
         }

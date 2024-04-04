@@ -27,8 +27,6 @@ namespace Grammar
             new BracketPair { Type = NodeType.NoneOrOnce, Open = "[", Close = "]" }
         ];
 
-
-
         public void Parse()
         {
             SkipWhitespace();
